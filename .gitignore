@@ -1,0 +1,98 @@
+# ======================
+# 📦 Dependencies
+# ======================
+node_modules/
+**/node_modules/
+
+# ======================
+# 🔐 Environment Variables
+# ======================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ======================
+# 🧾 Logs
+# ======================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ======================
+# 🏗️ Build Outputs
+# ======================
+dist/
+build/
+coverage/
+.cache/
+.next/
+out/
+
+# ======================
+# ⚙️ Runtime Data
+# ======================
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ======================
+# 🧠 IDE / Editor Settings
+# ======================
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+
+# ======================
+# 💻 OS/System Files
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# 🕐 Temporary Files
+# ======================
+tmp/
+temp/
+.tmp/
+.temp/
+*.tmp
+
+# ======================
+# 🖼️ Uploaded Files (if stored locally)
+# ======================
+uploads/
+
+# ======================
+# 🗃️ Database Dumps
+# ======================
+dump/
+*.bson
+*.json
+
+# ======================
+# 💬 TypeScript Cache (optional)
+# ======================
+*.tsbuildinfo
+
+# ======================
+# ⚛️ React Frontend
+# ======================
+**/build/
+**/dist/
+*.env
+.env.*
+
+# ======================
+# 📁 Miscellaneous
+# ======================
+package-lock.json
+yarn.lock
