@@ -84,15 +84,13 @@ dump/
 *.tsbuildinfo
 
 # ======================
-# ⚛️ React Frontend
+# ⚛️ React Frontend / build folders
 # ======================
 **/build/
 **/dist/
-*.env
-.env.*
 
 # ======================
-# 📁 Miscellaneous
+# Other / Miscellaneous
 # ======================
 package-lock.json
 yarn.lock
