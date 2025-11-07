@@ -14,14 +14,12 @@ const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const checkoutRoutes = require("./routes/checkoutRoutes");
-const stripeWebhook = require("./webhooks/stripeWebhook");
+
 
 dotenv.config();
 
 const app = express();
 
-// ✅ Stripe webhook must come BEFORE express.json()
-app.use("/api/checkout/webhook", stripeWebhook);
 
 // ✅ Middleware
 app.use(
