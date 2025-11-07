@@ -1,79 +1,109 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET);
+require('dotenv').config();
+const Paystack = require("paystack-node");
+const crypto = require("crypto");
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const sendEmail = require('../utils/sendEmail');
 
-exports.createCheckoutSession = async (req, res) => {
-  const { shippingAddress } = req.body;
-  const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
-  if (!cart || cart.items.length === 0) return res.status(400).json({ message: 'Cart empty' });
+// Initialize Paystack client
+const paystack = new Paystack(
+  process.env.PAYSTACK_SECRET_KEY,
+  process.env.NODE_ENV === "production" // true = live, false = test
+);
 
-  // compute line_items server-side
-  const line_items = cart.items.map(i => ({
-    price_data: {
-      currency: 'zar',
-      product_data: { name: i.product.name, description: i.product.description || '' },
-      unit_amount: Math.round(i.product.price * 100)
-    },
-    quantity: i.quantity
-  }));
+// ------------------------
+// PAYSTACK PAYMENT
+// ------------------------
 
-  // Create order in DB with pending status
-  const order = await Order.create({
-    user: req.user._id,
-    items: cart.items.map(i => ({ product: i.product._id, name: i.product.name, price: i.product.price, quantity: i.quantity })),
-    shippingAddress,
-    total: cart.items.reduce((s, i) => s + i.product.price * i.quantity, 0),
-    paymentStatus: 'pending'
-  });
+exports.createPaystackPayment = async (req, res) => {
+  try {
+    const { shippingAddress } = req.body;
+    const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
+    if (!cart || cart.items.length === 0) return res.status(400).json({ message: 'Cart empty' });
 
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    line_items,
-    mode: 'payment',
-    success_url: `${process.env.CLIENT_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.CLIENT_URL}/checkout/cancel`,
-    metadata: { orderId: order._id.toString() },
-    customer_email: req.user.email
-  });
+    // Build detailed cart items
+    const detailedItems = cart.items.map(i => ({
+      product: i.product._id,
+      name: i.product.name,
+      price: i.product.price,
+      quantity: i.quantity
+    }));
 
-  res.json({ url: session.url });
+    // Calculate total in kobo
+    const totalAmount = Math.round(cart.items.reduce((sum, i) => sum + i.product.price * i.quantity, 0) * 100);
+
+    // Create order in DB (pending)
+    const order = await Order.create({
+      user: req.user._id,
+      items: detailedItems,
+      shippingAddress,
+      total: totalAmount / 100,
+      paymentStatus: 'pending'
+    });
+
+    // Initialize Paystack transaction
+    const response = await paystack.initializeTransaction({
+      email: req.user.email,
+      amount: totalAmount,
+      callback_url: `${process.env.CLIENT_URL}/checkout-success`,
+      metadata: { orderId: order._id.toString() }
+    });
+
+    res.json({ url: response.data.authorization_url });
+  } catch (err) {
+    console.error('💥 Paystack checkout error:', err.message);
+    res.status(500).json({ message: 'Payment initialization failed' });
+  }
 };
 
-// Webhook handler. Note: server.js mounts this route with raw body.
-exports.stripeWebhookHandler = async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
+// Paystack Webhook
+exports.paystackWebhookHandler = async (req, res) => {
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error('Stripe webhook signature verification failed', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    const hash = req.headers["x-paystack-signature"];
+
+    const computedHash = crypto
+      .createHmac("sha512", secret)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+
+    if (hash !== computedHash) return res.status(400).send("Invalid signature");
+
+    const event = req.body;
+
+    if (event.event === "charge.success") {
+      const { metadata, customer, reference } = event.data;
+      const orderId = metadata?.orderId;
+
+      if (orderId) {
+        const order = await Order.findByIdAndUpdate(orderId, {
+          paymentStatus: "paid",
+          paymentIntentId: reference,
+          updatedAt: Date.now()
+        }, { new: true });
+
+        // Clear user's cart
+        await Cart.findOneAndDelete({ user: order.user });
+
+        // Send confirmation email
+        try {
+          await sendEmail({
+            to: customer.email,
+            subject: 'Order confirmed',
+            html: `<p>Thanks! Your order ${order._id} has been confirmed.</p>`
+          });
+        } catch (e) {
+          console.warn('Failed to send order email', e.message);
+        }
+      }
+
+      console.log(`✅ Order ${orderId} paid successfully by ${customer.email}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Webhook error:", error.message);
+    res.status(500).json({ message: "Webhook handling failed" });
   }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const orderId = session.metadata.orderId;
-    // mark order paid
-    const order = await Order.findByIdAndUpdate(orderId, {
-      paymentStatus: 'paid',
-      paymentIntentId: session.payment_intent,
-      updatedAt: Date.now()
-    }, { new: true });
-
-    // clear user's cart
-    await Cart.findOneAndDelete({ user: order.user });
-
-    // send confirmation email
-    try {
-      await sendEmail({
-        to: session.customer_email,
-        subject: 'Order confirmed',
-        html: `<p>Thanks! Your order ${order._id} has been confirmed.</p>`
-      });
-    } catch (e) { console.warn('Failed to send order email', e.message); }
-  }
-
-  res.json({ received: true });
 };
