@@ -1,12 +1,11 @@
-// routes/metaAdminRoutes.js
-import express from "express";
-import {
-  createAdmin,
-  updateAdmin,
-  deleteAdmin,
-  listAdmins,
-} from "../controllers/metaAdminController.js";
-import { auth } from "../middleware/auth.js";
+const express = require("express");
+const {
+createAdmin,
+updateAdmin,
+deleteAdmin,
+listAdmins,
+} = require("../controllers/metaAdminController");
+const { auth } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -16,4 +15,4 @@ router.put("/:id", auth, updateAdmin);
 router.delete("/:id", auth, deleteAdmin);
 router.get("/", auth, listAdmins);
 
-export default router;
+module.exports = router;
