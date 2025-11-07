@@ -13,8 +13,10 @@ const adminRoutes = require("./routes/adminRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
-const checkoutRoutes = require("./routes/checkoutRoutes"); // Paystack
+const checkoutRoutes = require("./routes/checkoutRoutes");
 
+// Middleware
+const { paystackWebhookHandler } = require("./controllers/checkoutController");
 const { errorHandler } = require("./middleware/errorHandler");
 
 dotenv.config();
@@ -50,6 +52,15 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/meta-admin", metaAdminRoutes);
+
+// -----------------------------
+// Paystack Webhook (raw body required)
+// -----------------------------
+app.post(
+  "/api/checkout/paystack-webhook",
+  express.raw({ type: "application/json" }),
+  paystackWebhookHandler
+);
 
 // -----------------------------
 // Error handler
