@@ -5,6 +5,7 @@ const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const sendEmail = require("../utils/sendEmail");
 
+// Initialize Paystack
 const paystack = new Paystack(
   process.env.PAYSTACK_SECRET_KEY,
   process.env.NODE_ENV === "production"
@@ -14,7 +15,9 @@ const paystack = new Paystack(
 exports.createPaystackPayment = async (req, res) => {
   try {
     const { items, customerEmail, shippingAddress, userId } = req.body;
-    if (!items || items.length === 0) return res.status(400).json({ message: "Cart empty" });
+
+    if (!items || items.length === 0)
+      return res.status(400).json({ message: "Cart empty" });
 
     const detailedItems = [];
     for (const item of items) {
@@ -59,6 +62,7 @@ exports.paystackWebhookHandler = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
     const hash = req.headers["x-paystack-signature"];
+
     const computedHash = crypto
       .createHmac("sha512", secret)
       .update(JSON.stringify(req.body))
@@ -67,6 +71,7 @@ exports.paystackWebhookHandler = async (req, res) => {
     if (hash !== computedHash) return res.status(400).send("Invalid signature");
 
     const event = req.body;
+
     if (event.event === "charge.success") {
       const { metadata, customer, reference } = event.data;
       const orderId = metadata?.orderId;
@@ -74,14 +79,16 @@ exports.paystackWebhookHandler = async (req, res) => {
       if (orderId) {
         const order = await Order.findByIdAndUpdate(
           orderId,
-          { paymentStatus: "paid", paymentIntentId: reference, updatedAt: Date.now() },
+          {
+            paymentStatus: "paid",
+            paymentIntentId: reference,
+            updatedAt: Date.now(),
+          },
           { new: true }
         );
 
-        // Clear user's cart
         await Cart.findOneAndDelete({ user: order.user });
 
-        // Send confirmation email
         try {
           await sendEmail({
             to: customer.email,
