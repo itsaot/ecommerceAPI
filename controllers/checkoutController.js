@@ -5,20 +5,25 @@ const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const sendEmail = require("../utils/sendEmail");
 
-// Initialize Paystack
+// Initialize Paystack client
 const paystack = new Paystack(
   process.env.PAYSTACK_SECRET_KEY,
   process.env.NODE_ENV === "production"
 );
 
-// Create Paystack payment
+/**
+ * Create Paystack transaction and order
+ * POST /api/checkout/paystack
+ */
 exports.createPaystackPayment = async (req, res) => {
   try {
     const { items, customerEmail, shippingAddress, userId } = req.body;
 
-    if (!items || items.length === 0)
-      return res.status(400).json({ message: "Cart empty" });
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
+    }
 
+    // Build detailed cart items
     const detailedItems = [];
     for (const item of items) {
       const product = await Product.findById(item.productId);
@@ -31,10 +36,12 @@ exports.createPaystackPayment = async (req, res) => {
       });
     }
 
+    // Calculate total in kobo
     const totalAmount = Math.round(
       detailedItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100
     );
 
+    // Create pending order
     const order = await Order.create({
       user: userId,
       items: detailedItems,
@@ -43,6 +50,7 @@ exports.createPaystackPayment = async (req, res) => {
       paymentStatus: "pending",
     });
 
+    // Initialize Paystack transaction
     const response = await paystack.initializeTransaction({
       email: customerEmail,
       amount: totalAmount,
@@ -57,7 +65,11 @@ exports.createPaystackPayment = async (req, res) => {
   }
 };
 
-// Paystack webhook
+/**
+ * Paystack Webhook handler
+ * POST /api/checkout/paystack-webhook
+ * ⚠️ Must not be protected by auth
+ */
 exports.paystackWebhookHandler = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
@@ -87,8 +99,10 @@ exports.paystackWebhookHandler = async (req, res) => {
           { new: true }
         );
 
+        // Clear user's cart
         await Cart.findOneAndDelete({ user: order.user });
 
+        // Send confirmation email
         try {
           await sendEmail({
             to: customer.email,
