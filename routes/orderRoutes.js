@@ -4,7 +4,10 @@ const checkout = require('../controllers/checkoutController');
 const orders = require('../controllers/orderController');
 const { auth, isAdmin } = require('../middleware/auth');
 
-router.post('/checkout', auth, checkout.createCheckoutSession);
+// user checkout via Paystack
+router.post('/paystack', auth, checkout.createPaystackPayment);
+
+// get user orders
 router.get('/', auth, orders.getUserOrders);
 router.get('/:id', auth, orders.getOrder);
 
