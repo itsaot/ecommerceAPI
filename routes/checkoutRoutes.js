@@ -1,9 +1,8 @@
 const express = require("express");
-const router = express.Router();
-const checkoutController = require("../controllers/checkoutController");
-const { auth } = require("../middleware/auth");
+const { createPaystackPayment } = require("../controllers/checkoutController");
 
-// Protected route to create payment
-router.post("/paystack", auth, checkoutController.createPaystackPayment);
+const router = express.Router();
+
+router.post("/paystack", createPaystackPayment);
 
 module.exports = router;
