@@ -1,71 +1,100 @@
-const express = require("express");
-const Stripe = require("stripe");
-const Order = require("../models/Order");
-const Product = require("../models/Product");
+const Paystack = require('paystack-api')(
+process.env.PAYSTACK_SECRET_KEY
+);
+const crypto = require('crypto');
+const Order = require('../models/Order');
+const Cart = require('../models/Cart');
+const Product = require('../models/Product');
+const sendEmail = require('../utils/sendEmail');
 
-const router = express.Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET);
-
-// Create Stripe checkout session
-router.post("/", async (req, res) => {
+// Initialize payment and create order
+exports.createPayment = async (req, res) => {
 try {
-const { items, customerEmail } = req.body;
+const { shippingAddress } = req.body;
+const cart = await Cart.findOne({ user: req.user._id }).populate('items.product');
+if (!cart || cart.items.length === 0)
+return res.status(400).json({ message: 'Cart empty' });
 
-
-if (!items || !Array.isArray(items) || items.length === 0) {
-  return res.status(400).json({ message: "Cart is empty or invalid" });
-}
-
-// Build line items for Stripe
-const line_items = await Promise.all(
-  items.map(async (item) => {
-    const product = await Product.findById(item.productId);
-    if (!product) throw new Error(`Product not found: ${item.productId}`);
-
-    return {
-      price_data: {
-        currency: product.currency || "usd",
-        product_data: {
-          name: product.name,
-          description: product.description || "",
-        },
-        unit_amount: Math.round(product.price * 100), // Stripe expects cents
-      },
-      quantity: item.quantity,
-    };
-  })
+// calculate total amount in kobo
+const amount = Math.round(
+  cart.items.reduce((s, i) => s + i.product.price * i.quantity, 0) * 100
 );
 
-// Create order in DB (pending payment)
-const totalAmount = line_items.reduce(
-  (sum, li) => sum + li.price_data.unit_amount * li.quantity,
-  0
-);
-
+// create order with pending status
 const order = await Order.create({
-  items,
-  customerEmail,
-  paymentStatus: "pending",
-  total: totalAmount,
+  user: req.user._id,
+  items: cart.items.map(i => ({
+    product: i.product._id,
+    name: i.product.name,
+    price: i.product.price,
+    quantity: i.quantity
+  })),
+  shippingAddress,
+  total: amount / 100,
+  paymentStatus: 'pending'
 });
 
-// Create Stripe checkout session
-const session = await stripe.checkout.sessions.create({
-  payment_method_types: ["card"],
-  line_items,
-  mode: "payment",
-  customer_email: customerEmail,
+// initialize Paystack transaction
+const response = await Paystack.transaction.initialize({
+  email: req.user.email,
+  amount,
   metadata: { orderId: order._id.toString() },
-  success_url: `${process.env.CLIENT_URL}/checkout-success?session_id={CHECKOUT_SESSION_ID}`,
-  cancel_url: `${process.env.CLIENT_URL}/checkout-cancel`,
+  callback_url: `${process.env.CLIENT_URL}/checkout/success`
 });
 
-res.json({ url: session.url });
+res.json({ url: response.data.authorization_url });
 
 } catch (err) {
-console.error("💥 Stripe checkout error:", err);
-res.status(500).json({ message: err.message });
+console.error(err);
+res.status(500).json({ message: 'Payment initialization failed' });
 }
-});
+};
 
-module.exports = router;
+// Paystack webhook handler
+exports.paystackWebhookHandler = async (req, res) => {
+const hash = req.headers['x-paystack-signature'];
+const secret = process.env.PAYSTACK_WEBHOOK_SECRET;
+
+// verify signature
+const computedHash = crypto
+.createHmac('sha512', secret)
+.update(JSON.stringify(req.body))
+.digest('hex');
+
+if (hash !== computedHash) return res.status(400).send('Invalid signature');
+
+const event = req.body;
+
+if (event.event === 'charge.success') {
+const metadata = event.data.metadata;
+const orderId = metadata.orderId;
+
+// mark order as paid
+const order = await Order.findByIdAndUpdate(
+  orderId,
+  {
+    paymentStatus: 'paid',
+    paymentIntentId: event.data.reference,
+    updatedAt: Date.now()
+  },
+  { new: true }
+);
+
+// clear user's cart
+await Cart.findOneAndDelete({ user: order.user });
+
+// send confirmation email
+try {
+  await sendEmail({
+    to: event.data.customer.email,
+    subject: 'Order confirmed',
+    html: `<p>Thanks! Your order ${order._id} has been confirmed.</p>`
+  });
+} catch (e) {
+  console.warn('Failed to send order email', e.message);
+}
+
+}
+
+res.json({ received: true });
+};
