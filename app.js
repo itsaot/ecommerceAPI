@@ -5,7 +5,7 @@ const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const path = require("path");
 
-const { errorHandler } = require("./middleware/errorHandler");
+// Routes
 const metaAdminRoutes = require("./routes/metaAdminRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -14,6 +14,9 @@ const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const checkoutRoutes = require("./routes/checkoutRoutes"); // Paystack
+
+const { paystackWebhookHandler } = require("./controllers/checkoutController");
+const { errorHandler } = require("./middleware/errorHandler");
 
 dotenv.config();
 
@@ -52,7 +55,6 @@ app.use("/api/meta-admin", metaAdminRoutes);
 // -----------------------------
 // Paystack Webhook (raw body required)
 // -----------------------------
-const { paystackWebhookHandler } = require("./controllers/checkoutController");
 app.post(
   "/api/checkout/paystack-webhook",
   express.raw({ type: "application/json" }),
