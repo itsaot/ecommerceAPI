@@ -1,38 +1,34 @@
-import express from "express";
-import dotenv from "dotenv";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import morgan from "morgan";
-import path from "path";
-import { fileURLToPath } from "url";
-import { errorHandler } from "./middleware/errorHandler.js";
-import metaAdminRoutes from "./routes/metaAdminRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import productRoutes from "./routes/productRoutes.js";
-import cartRoutes from "./routes/cartRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import checkoutRoutes from "./routes/checkoutRoutes.js";
-import stripeWebhook from "./webhooks/stripeWebhook.js";
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
+const path = require("path");
+
+const { errorHandler } = require("./middleware/errorHandler");
+const metaAdminRoutes = require("./routes/metaAdminRoutes");
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const productRoutes = require("./routes/productRoutes");
+const cartRoutes = require("./routes/cartRoutes");
+const orderRoutes = require("./routes/orderRoutes");
+const checkoutRoutes = require("./routes/checkoutRoutes");
+const stripeWebhook = require("./webhooks/stripeWebhook");
 
 dotenv.config();
 
 const app = express();
-
-// ✅ Needed when using ES modules to resolve __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // ✅ Stripe webhook must come BEFORE express.json()
 app.use("/api/checkout/webhook", stripeWebhook);
 
 // ✅ Middleware
 app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
+cors({
+origin: process.env.CLIENT_URL,
+credentials: true,
+})
 );
 app.use(express.json());
 app.use(cookieParser());
@@ -54,4 +50,4 @@ app.use("/api/meta-admin", metaAdminRoutes);
 // ✅ Error handler
 app.use(errorHandler);
 
-export default app;
+module.exports = app;
