@@ -16,6 +16,8 @@ const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoriesRoutes');
+
 
 const app = express();
 
@@ -73,6 +75,7 @@ console.log("💡 Mounting User routes");
 app.use('/api/users', userRoutes);
 console.log("✅ User routes mounted");
 
+app.use('/api/categories', categoryRoutes);
 // -----------------------------
 // Error handler
 // -----------------------------
