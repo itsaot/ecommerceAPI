@@ -23,7 +23,6 @@ exports.createPaystackPayment = async (req, res) => {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // Build detailed cart items
     const detailedItems = [];
     for (const item of items) {
       const product = await Product.findById(item.productId);
@@ -36,12 +35,10 @@ exports.createPaystackPayment = async (req, res) => {
       });
     }
 
-    // Calculate total in kobo
     const totalAmount = Math.round(
       detailedItems.reduce((sum, i) => sum + i.price * i.quantity, 0) * 100
     );
 
-    // Create pending order
     const order = await Order.create({
       user: userId,
       items: detailedItems,
@@ -50,7 +47,6 @@ exports.createPaystackPayment = async (req, res) => {
       paymentStatus: "pending",
     });
 
-    // Initialize Paystack transaction
     const response = await paystack.initializeTransaction({
       email: customerEmail,
       amount: totalAmount,
@@ -99,10 +95,8 @@ exports.paystackWebhookHandler = async (req, res) => {
           { new: true }
         );
 
-        // Clear user's cart
         await Cart.findOneAndDelete({ user: order.user });
 
-        // Send confirmation email
         try {
           await sendEmail({
             to: customer.email,

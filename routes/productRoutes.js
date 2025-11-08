@@ -10,6 +10,9 @@ const {
   removeSpecial,
   getProducts,
   getProduct,
+  getProductsByCategory,
+  getActiveSpecials,
+  searchProducts,
 } = require("../controllers/productController");
 
 const multer = require("multer");
@@ -22,6 +25,9 @@ const upload = multer({ storage });
 
 // Public
 router.get("/", getProducts);
+router.get("/search", searchProducts);
+router.get("/category/:categoryName", getProductsByCategory);
+router.get("/specials/active", getActiveSpecials);
 router.get("/:id", getProduct);
 
 // Admin

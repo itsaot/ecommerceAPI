@@ -5,28 +5,26 @@ const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const path = require("path");
 
-// -----------------------------
-// Routes
-// -----------------------------
-const metaAdminRoutes = require("./routes/metaAdminRoutes");
+// Load environment variables
+dotenv.config();
+
+// Import routes
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
-const checkoutRoutes = require("./routes/checkoutRoutes"); // Paystack
+const checkoutRoutes = require("./routes/checkoutRoutes");
+const metaAdminRoutes = require("./routes/metaAdminRoutes");
 
-// -----------------------------
-// Controllers & Middleware
-// -----------------------------
+// Import Paystack webhook handler
 const { paystackWebhookHandler } = require("./controllers/checkoutController");
+
+// Import global error handler
 const { errorHandler } = require("./middleware/errorHandler");
 
-dotenv.config();
-
 const app = express();
-
 console.log("💡 Express app initialized");
 
 // -----------------------------
@@ -61,18 +59,25 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 console.log("💡 Registering API routes");
 app.use("/api/auth", authRoutes);
 console.log("✅ Auth routes registered");
+
 app.use("/api/users", userRoutes);
 console.log("✅ User routes registered");
+
 app.use("/api/admin", adminRoutes);
 console.log("✅ Admin routes registered");
+
 app.use("/api/products", productRoutes);
 console.log("✅ Product routes registered");
+
 app.use("/api/cart", cartRoutes);
 console.log("✅ Cart routes registered");
+
 app.use("/api/orders", orderRoutes);
 console.log("✅ Order routes registered");
+
 app.use("/api/checkout", checkoutRoutes);
 console.log("✅ Checkout routes registered");
+
 app.use("/api/meta-admin", metaAdminRoutes);
 console.log("✅ Meta-admin routes registered");
 
@@ -80,28 +85,26 @@ console.log("✅ Meta-admin routes registered");
 // Paystack Webhook (raw body required)
 // -----------------------------
 console.log("💡 Registering Paystack webhook route");
-if (!paystackWebhookHandler) {
-  console.error("❌ paystackWebhookHandler is undefined!");
-} else {
-  console.log("✅ paystackWebhookHandler loaded");
-}
 app.post(
   "/api/checkout/paystack-webhook",
   express.raw({ type: "application/json" }),
   paystackWebhookHandler
 );
+console.log("✅ paystackWebhookHandler loaded");
 
 // -----------------------------
-// Error handler
+// Global Error Handler
 // -----------------------------
 console.log("💡 Setting up global error handler");
-if (!errorHandler) {
-  console.error("❌ errorHandler middleware is undefined!");
-} else {
-  console.log("✅ errorHandler loaded");
-}
 app.use(errorHandler);
+console.log("✅ errorHandler loaded");
 
 console.log("💡 App setup complete");
+
+// -----------------------------
+// Start Server
+// -----------------------------
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 module.exports = app;
