@@ -1,30 +1,35 @@
 const nodemailer = require("nodemailer");
+require("dotenv").config();
 
-// Create transporter
+// ✅ Create transporter (matches verified working setup)
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_SECURE === "true",
+  secure: Number(process.env.SMTP_PORT) === 465, // 465 = true
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: {
+    rejectUnauthorized: false, // allow self-signed/strict SSL
+  },
 });
 
 // Verify transporter on startup
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("❌ SMTP transporter verification failed:", err);
-  } else {
+(async () => {
+  try {
+    console.log("🔍 Verifying SMTP connection...");
+    await transporter.verify();
     console.log("✅ SMTP transporter ready");
+  } catch (err) {
+    console.error("❌ SMTP transporter verification failed:", err);
   }
-});
+})();
 
 // POST /api/contact
 exports.sendContactEmail = async (req, res) => {
   const timestamp = new Date().toISOString();
-  console.log(`\n📩 [${timestamp}] Contact form received:`);
-  console.log(req.body);
+  console.log(`\n📩 [${timestamp}] Contact form received:`, req.body);
 
   try {
     const { name, email, phone, subject, message } = req.body;
@@ -62,11 +67,7 @@ Message: ${message}
       messageId: info.messageId,
     });
   } catch (err) {
-    console.error(`❌ [${timestamp}] Failed to send contact email:`);
-    console.error("Error message:", err.message);
-    console.error("Error code:", err.code);
-    console.error("Stack trace:", err.stack);
-
+    console.error(`❌ [${timestamp}] Failed to send contact email:`, err);
     res.status(500).json({
       message: "Failed to send contact form",
       error: err.message,

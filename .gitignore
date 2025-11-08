@@ -99,3 +99,5 @@ yarn.lock
 createAdmin.js
 createMetaAdmin.js
 testEmail.js
+verifySMTP.js
+testPort.js
