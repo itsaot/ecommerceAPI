@@ -28,16 +28,33 @@ const app = express();
 console.log("💡 Express app initialized");
 
 // -----------------------------
-// Middleware
+// CORS Setup
 // -----------------------------
 console.log("💡 Setting up CORS");
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
-);
+const whitelist = [
+  process.env.CLIENT_URL,   // frontend URL from .env
+  "http://localhost:3000","https://lovable.dev/projects","https://preview--ecom-opus-palette.lovable.app/",  // local dev
+];
 
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow non-browser requests (Postman, cron jobs, etc.)
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true, // allow cookies/auth headers
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: "Content-Type,Authorization",
+};
+
+app.use(cors(corsOptions));
+
+// -----------------------------
+// Middleware
+// -----------------------------
 console.log("💡 Setting up JSON parser");
 app.use(express.json());
 
@@ -85,6 +102,7 @@ console.log("✅ Meta-admin routes registered");
 // Paystack Webhook (raw body required)
 // -----------------------------
 console.log("💡 Registering Paystack webhook route");
+// Paystack webhook should bypass JSON/body parsers and CORS
 app.post(
   "/api/checkout/paystack-webhook",
   express.raw({ type: "application/json" }),
