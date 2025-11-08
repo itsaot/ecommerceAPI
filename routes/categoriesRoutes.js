@@ -1,15 +1,48 @@
+// routes/categoriesRoutes.js
 const express = require('express');
 const router = express.Router();
-const ctrl = require('../controllers/categoryController');
-const { auth, isAdmin } = require('../middleware/auth');
+const Category = require('../models/Category');
 
-// Public
-router.get('/', ctrl.getAllCategories);
-router.get('/:id', ctrl.getCategoryById);
+// GET all categories
+router.get('/', async (req, res) => {
+  try {
+    const categories = await Category.find();
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-// Admin
-router.post('/', auth, isAdmin, ctrl.createCategory);
-router.put('/:id', auth, isAdmin, ctrl.updateCategory);
-router.delete('/:id', auth, isAdmin, ctrl.deleteCategory);
+// POST create category
+router.post('/', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const category = new Category({ name, description });
+    await category.save();
+    res.status(201).json(category);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PUT update category
+router.put('/:id', async (req, res) => {
+  try {
+    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(category);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// DELETE category
+router.delete('/:id', async (req, res) => {
+  try {
+    await Category.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Category deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;
