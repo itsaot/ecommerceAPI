@@ -4,7 +4,10 @@ const router = express.Router();
 const Category = require('../models/Category');
 
 // GET all categories
+console.log("💡 categoriesRoutes loaded");
+
 router.get('/', async (req, res) => {
+  console.log("💡 GET /api/categories hit");
   try {
     const categories = await Category.find();
     res.json(categories);
@@ -12,6 +15,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // POST create category
 router.post('/', async (req, res) => {
