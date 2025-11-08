@@ -33,7 +33,7 @@ console.log("💡 Express app initialized");
 console.log("💡 Setting up CORS");
 const whitelist = [
   process.env.CLIENT_URL,   // frontend URL from .env
-  "http://localhost:3000","https://lovable.dev/projects","https://preview--ecom-opus-palette.lovable.app/",  // local dev
+  "http://localhost:3000","https://lovable.dev/projects","https://preview--ecom-opus-palette.lovable.app",  // local dev
 ];
 
 const corsOptions = {
