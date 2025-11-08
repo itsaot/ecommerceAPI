@@ -20,6 +20,7 @@ const categoryRoutes = require('./routes/categoriesRoutes');
 const contactRoutes = require("./routes/contactRoutes");
 
 
+
 const app = express();
 
 // -----------------------------
@@ -78,8 +79,6 @@ console.log("✅ User routes mounted");
 
 app.use('/api/categories', categoryRoutes);
 app.use("/api/contact", contactRoutes);
-app.use("/api/contact", require("./routes/contactRoutes"));
-
 
 
 // -----------------------------
