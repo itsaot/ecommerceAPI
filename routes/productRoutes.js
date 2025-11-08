@@ -1,43 +1,37 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { auth, isAdmin } = require("../middleware/auth");
+const upload = require('../middleware/upload');
 const {
   createProduct,
+  getProducts,
+  getProduct,
   updateProduct,
   deleteProduct,
   uploadImage,
   setSpecial,
-  removeSpecial,
-  getProducts,
-  getProduct,
-  getProductsByCategory,
-  getActiveSpecials,
-  searchProducts,
-} = require("../controllers/productController");
+  removeSpecial
+} = require('../controllers/productController');
 
-const multer = require("multer");
-const path = require("path");
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
-});
-const upload = multer({ storage });
+// List all products
+router.get('/', getProducts);
 
-// Public
-router.get("/", getProducts);
-router.get("/search", searchProducts);
-router.get("/category/:categoryName", getProductsByCategory);
-router.get("/specials/active", getActiveSpecials);
-router.get("/:id", getProduct);
+// Get single product
+router.get('/:id', getProduct);
 
-// Admin
-router.post("/", auth, isAdmin, upload.single("image"), createProduct);
-router.put("/:id", auth, isAdmin, upload.single("image"), updateProduct);
-router.delete("/:id", auth, isAdmin, deleteProduct);
-router.post("/:id/images", auth, isAdmin, upload.single("image"), uploadImage);
+// Create product
+router.post('/', upload.single('image'), createProduct);
 
-// Specials
-router.put("/:productId/special", auth, isAdmin, setSpecial);
-router.delete("/:productId/special", auth, isAdmin, removeSpecial);
+// Update product
+router.put('/:id', upload.single('image'), updateProduct);
+
+// Delete product
+router.delete('/:id', deleteProduct);
+
+// Upload product image
+router.post('/:id/upload', upload.single('image'), uploadImage);
+
+// Specials (discount)
+router.post('/:productId/special', setSpecial);
+router.delete('/:productId/special', removeSpecial);
 
 module.exports = router;
