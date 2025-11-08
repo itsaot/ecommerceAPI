@@ -1,40 +1,46 @@
 const nodemailer = require("nodemailer");
 
-// Configure your email transporter (example using Gmail, replace with your service)
+// Configure transporter
 const transporter = nodemailer.createTransport({
-  service: "Gmail", // or "SendGrid", "SMTP", etc.
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: process.env.SMTP_SECURE === "false", // true for 465, false for other ports
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
-// POST /api/contact
+transporter.verify().then(() => console.log("✅ SMTP transporter verified")).catch(console.error);
+
 exports.sendContactEmail = async (req, res) => {
   try {
-    const { name, email, subject, message } = req.body;
+    const { name, email, phone, subject, message } = req.body;
 
-    if (!name || !email || !subject || !message) {
-      console.log("❌ Contact form submission missing fields:", req.body);
-      return res.status(400).json({ message: "All fields are required" });
+    console.log("📩 Contact form received:", req.body);
+
+    if (!process.env.CONTACT_RECEIVER_EMAIL) {
+      throw new Error("CONTACT_RECEIVER_EMAIL not set in environment variables");
     }
 
-    // Create the email options
     const mailOptions = {
-      from: `"${name}" <${email}>`,
-      to: process.env.CONTACT_RECEIVER_EMAIL, // your email or admin email
-      subject: `[Contact Page] ${subject}`,
-      text: message,
-      html: `<p>${message}</p><p>From: ${name} (${email})</p>`,
+      from: email, // user submitting the form
+      to: process.env.CONTACT_RECEIVER_EMAIL, // support email
+      subject: `Contact Form: ${subject}`,
+      html: `
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
+        <p><strong>Message:</strong> ${message}</p>
+      `,
     };
 
-    // Send the email
     const info = await transporter.sendMail(mailOptions);
-    console.log("📧 Contact email sent:", info.response);
 
-    return res.status(200).json({ message: "Email sent successfully" });
+    console.log("✅ Contact email sent:", info.messageId);
+    res.status(200).json({ message: "Contact form submitted successfully" });
   } catch (err) {
-    console.error("❌ Error sending contact email:", err);
-    return res.status(500).json({ message: "Failed to send email", error: err.message });
+    console.error("❌ Contact form error:", err);
+    res.status(500).json({ message: "Failed to send contact form", error: err.message });
   }
 };
