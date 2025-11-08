@@ -8,7 +8,9 @@ const path = require("path");
 // Load environment variables
 dotenv.config();
 
+// -----------------------------
 // Import routes
+// -----------------------------
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -31,21 +33,25 @@ console.log("💡 Express app initialized");
 // CORS Setup
 // -----------------------------
 console.log("💡 Setting up CORS");
+
+// Dynamic whitelist from .env (comma-separated) + common dev URLs
 const whitelist = [
-  process.env.CLIENT_URL,   // frontend URL from .env
-  "http://localhost:3000","https://lovable.dev/projects","https://preview--ecom-opus-palette.lovable.app",  // local dev
+  ...(process.env.CORS_WHITELIST?.split(",").map(url => url.trim()) || []),
+  process.env.CLIENT_URL,
+  "http://localhost:3000",
+  "https://preview--ecom-opus-palette.lovable.app"
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser requests (Postman, cron jobs, etc.)
+    if (!origin) return callback(null, true); // allow non-browser requests
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
     }
   },
-  credentials: true, // allow cookies/auth headers
+  credentials: true,
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: "Content-Type,Authorization",
 };
@@ -109,6 +115,16 @@ app.post(
   paystackWebhookHandler
 );
 console.log("✅ paystackWebhookHandler loaded");
+
+// -----------------------------
+// Catch CORS errors
+// -----------------------------
+app.use((err, req, res, next) => {
+  if (err && err.message === "Not allowed by CORS") {
+    return res.status(403).json({ message: "CORS Error: Origin not allowed" });
+  }
+  next(err);
+});
 
 // -----------------------------
 // Global Error Handler
