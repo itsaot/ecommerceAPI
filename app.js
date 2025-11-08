@@ -19,7 +19,7 @@ const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const checkoutRoutes = require("./routes/checkoutRoutes");
 const metaAdminRoutes = require("./routes/metaAdminRoutes");
-const categoryRoutes = require('./routes/categoriesRoutes');
+const categoryRoutes = require("./routes/categoriesRoutes");
 
 // Import Paystack webhook handler
 const { paystackWebhookHandler } = require("./controllers/checkoutController");
