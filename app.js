@@ -34,17 +34,17 @@ console.log("💡 Express app initialized");
 // -----------------------------
 console.log("💡 Setting up CORS");
 
-// Dynamic whitelist from .env (comma-separated) + common dev URLs
+// Dynamic whitelist from .env + common dev URLs
 const whitelist = [
   ...(process.env.CORS_WHITELIST?.split(",").map(url => url.trim()) || []),
-  process.env.CLIENT_URL,
-  "http://localhost:3000",
-  "https://preview--ecom-opus-palette.lovable.app"
+  process.env.CLIENT_URL, // main frontend URL
+  "http://localhost:3000", // local dev
+  "https://preview--ecom-opus-palette.lovable.app", // Lovable preview
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow non-browser requests
+    if (!origin) return callback(null, true); // Postman, cron jobs, server requests
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -81,28 +81,13 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 // -----------------------------
 console.log("💡 Registering API routes");
 app.use("/api/auth", authRoutes);
-console.log("✅ Auth routes registered");
-
 app.use("/api/users", userRoutes);
-console.log("✅ User routes registered");
-
 app.use("/api/admin", adminRoutes);
-console.log("✅ Admin routes registered");
-
 app.use("/api/products", productRoutes);
-console.log("✅ Product routes registered");
-
 app.use("/api/cart", cartRoutes);
-console.log("✅ Cart routes registered");
-
 app.use("/api/orders", orderRoutes);
-console.log("✅ Order routes registered");
-
 app.use("/api/checkout", checkoutRoutes);
-console.log("✅ Checkout routes registered");
-
 app.use("/api/meta-admin", metaAdminRoutes);
-console.log("✅ Meta-admin routes registered");
 
 // -----------------------------
 // Paystack Webhook (raw body required)
@@ -114,7 +99,6 @@ app.post(
   express.raw({ type: "application/json" }),
   paystackWebhookHandler
 );
-console.log("✅ paystackWebhookHandler loaded");
 
 // -----------------------------
 // Catch CORS errors
@@ -131,9 +115,6 @@ app.use((err, req, res, next) => {
 // -----------------------------
 console.log("💡 Setting up global error handler");
 app.use(errorHandler);
-console.log("✅ errorHandler loaded");
-
-console.log("💡 App setup complete");
 
 // -----------------------------
 // Start Server
