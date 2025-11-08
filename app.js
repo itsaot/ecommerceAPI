@@ -89,7 +89,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/meta-admin", metaAdminRoutes);
-app.use('/api/categories', categoryRoutes);
+app.use("/api/categories", categoryRoutes);
 // -----------------------------
 // Paystack Webhook (raw body required)
 // -----------------------------
