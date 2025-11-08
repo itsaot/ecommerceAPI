@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
   email:     { type: String, required: true, unique: true, lowercase: true, index: true },
   phone:     { type: String },
   password:  { type: String, required: true },
-  role:      { type: String, enum: ['user', 'admin'], default: 'user' },
+  role:      { type: String, enum: ['user', 'admin', 'meta-admin'], default: 'user' },
   isMetaAdmin: { type: Boolean, default: false }, // 🔥 only one or few can have this
   addresses: [{
     label: String,
