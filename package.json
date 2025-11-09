@@ -28,6 +28,7 @@
     "nodemailer": "^7.0.10",
     "paystack-api": "^2.0.6",
     "paystack-node": "^0.3.0",
+    "sib-api-v3-sdk": "^8.5.0",
     "stripe": "^19.1.0"
   },
   "devDependencies": {
