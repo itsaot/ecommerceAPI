@@ -1,12 +1,15 @@
-const SibApiV3Sdk = require("@getbrevo/brevo");
+const SibApiV3Sdk = require('sib-api-v3-sdk');
 
-// Initialize Brevo client
-const client = new SibApiV3Sdk.TransactionalEmailsApi();
-client.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY;
+// Configure Brevo SDK
+const client = SibApiV3Sdk.ApiClient.instance;
+client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
 
+const brevo = new SibApiV3Sdk.TransactionalEmailsApi();
+
+// POST /api/contact
 exports.sendContactEmail = async (req, res) => {
   const timestamp = new Date().toISOString();
-  console.log(`📩 [${timestamp}] Contact form received:`);
+  console.log(`\n📩 [${timestamp}] Contact form received:`);
   console.log(req.body);
 
   try {
@@ -18,46 +21,35 @@ exports.sendContactEmail = async (req, res) => {
     }
 
     const emailData = {
-      sender: {
-        name: "Wisten Engineering Website",
-        email: process.env.SMTP_FROM,
-      },
-      to: [
-        { email: process.env.CONTACT_RECEIVER_EMAIL, name: "Sales Team" },
-      ],
-      cc: [
-        { email: process.env.CONTACT_CC_EMAIL, name: "Admin" },
-      ],
-      replyTo: { email, name },
+      sender: { email: process.env.SMTP_FROM, name: "Website Contact" },
+      to: [{ email: process.env.CONTACT_RECEIVER_EMAIL }],
+      cc: [{ email: process.env.CONTACT_CC_EMAIL }],
       subject: `Contact Form: ${subject}`,
-      textContent: `
-Name: ${name}
-Email: ${email}
-Phone: ${phone || "N/A"}
-Message: ${message}
+      htmlContent: `
+        <h3>New Contact Message</h3>
+        <p><b>Name:</b> ${name}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Phone:</b> ${phone || "N/A"}</p>
+        <p><b>Message:</b><br>${message}</p>
       `,
+      replyTo: { email },
     };
 
-    console.log(`✉️ [${timestamp}] Sending via Brevo API...`);
-    console.log(emailData);
-
-    const result = await client.sendTransacEmail(emailData);
+    console.log(`✉️ [${timestamp}] Sending email via Brevo API...`);
+    const response = await brevo.sendTransacEmail(emailData);
 
     console.log(`✅ [${timestamp}] Email sent successfully!`);
-    console.log("Message ID:", result.messageId);
+    console.log("Response:", response);
 
     res.status(200).json({
       message: "Contact form submitted successfully",
-      messageId: result.messageId,
+      messageId: response.messageId,
     });
   } catch (err) {
-    console.error(`❌ [${timestamp}] Failed to send email:`);
-    console.error(err.response?.text || err.message);
-
+    console.error(`❌ [${timestamp}] Failed to send email:`, err);
     res.status(500).json({
       message: "Failed to send contact form",
       error: err.message,
-      details: err.response?.text || null,
     });
   }
 };
