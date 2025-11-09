@@ -1,49 +1,36 @@
-const nodemailer = require("nodemailer");
+const SibApiV3Sdk = require("@getbrevo/brevo");
 
-// Create the transporter using Brevo SMTP
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "false", // false for 587 (TLS)
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false, // allows TLS on shared hosts
-  },
-});
+// Initialize Brevo client
+const client = new SibApiV3Sdk.TransactionalEmailsApi();
+client.authentications["apiKey"].apiKey = process.env.BREVO_API_KEY;
 
-// Verify transporter on startup
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("❌ SMTP transporter verification failed:", err);
-  } else {
-    console.log("✅ SMTP transporter ready to send emails");
-  }
-});
-
-// POST /api/contact
 exports.sendContactEmail = async (req, res) => {
   const timestamp = new Date().toISOString();
-  console.log(`\n📩 [${timestamp}] Contact form received:`);
+  console.log(`📩 [${timestamp}] Contact form received:`);
   console.log(req.body);
 
   try {
     const { name, email, phone, subject, message } = req.body;
 
-    // Validate required fields
     if (!name || !email || !subject || !message) {
       console.warn(`⚠️ [${timestamp}] Missing required fields`);
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const mailOptions = {
-      from: `"${name}" <${process.env.SMTP_FROM}>`, // Your domain email
-      replyTo: email, // So replies go to user
-      to: process.env.CONTACT_RECEIVER_EMAIL || process.env.SMTP_FROM,
+    const emailData = {
+      sender: {
+        name: "Wisten Engineering Website",
+        email: process.env.SMTP_FROM,
+      },
+      to: [
+        { email: process.env.CONTACT_RECEIVER_EMAIL, name: "Sales Team" },
+      ],
+      cc: [
+        { email: process.env.CONTACT_CC_EMAIL, name: "Admin" },
+      ],
+      replyTo: { email, name },
       subject: `Contact Form: ${subject}`,
-      text: `
+      textContent: `
 Name: ${name}
 Email: ${email}
 Phone: ${phone || "N/A"}
@@ -51,29 +38,26 @@ Message: ${message}
       `,
     };
 
-    console.log(`✉️ [${timestamp}] Attempting to send email...`);
-    console.log("Mail options:", mailOptions);
+    console.log(`✉️ [${timestamp}] Sending via Brevo API...`);
+    console.log(emailData);
 
-    const info = await transporter.sendMail(mailOptions);
+    const result = await client.sendTransacEmail(emailData);
 
     console.log(`✅ [${timestamp}] Email sent successfully!`);
-    console.log("Message ID:", info.messageId);
-    console.log("Response:", info.response);
+    console.log("Message ID:", result.messageId);
 
     res.status(200).json({
       message: "Contact form submitted successfully",
-      messageId: info.messageId,
+      messageId: result.messageId,
     });
   } catch (err) {
-    console.error(`❌ [${timestamp}] Failed to send contact email:`);
-    console.error("Error message:", err.message);
-    console.error("Error code:", err.code);
-    console.error("Stack trace:", err.stack);
+    console.error(`❌ [${timestamp}] Failed to send email:`);
+    console.error(err.response?.text || err.message);
 
     res.status(500).json({
       message: "Failed to send contact form",
       error: err.message,
-      code: err.code,
+      details: err.response?.text || null,
     });
   }
 };
