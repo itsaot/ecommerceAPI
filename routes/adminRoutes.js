@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const { auth, isAdmin } = require('../middleware/auth');
 
+router.get("/dashboard", auth, isAdmin, adminController.getDashboard);
 router.post('/users', auth, isAdmin, async (req, res) => {
   const { firstName, lastName, email, password, role } = req.body;
   if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'Missing' });

@@ -8,29 +8,34 @@ function signToken(user) {
 }
 
 // 🔐 Verify user authentication
-exports.auth = (req, res, next) => {
-  try {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
-    if (!token) {
-      return res.status(401).json({ message: "Access denied. No token provided." });
-    }
+exports.auth = async (req, res, next) => {
+  const token = req.header("Authorization")?.replace("Bearer ", "");
+  if (!token) return res.status(401).json({ message: "No token provided" });
 
-    // Verify JWT token
+  try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // attach decoded user info to request
+    req.user = await User.findById(decoded.id).select("-password");
     next();
-  } catch (error) {
-    res.status(400).json({ message: "Invalid token." });
+  } catch (err) {
+    res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
 // 🧩 Check if user is admin
 exports.isAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ message: "Access denied. Admins only." });
+  if (req.user.role !== "admin" && req.user.role !== "meta-admin") {
+    return res.status(403).json({ message: "Access denied: Admins only" });
   }
   next();
 };
+
+exports.isMetaAdmin = (req, res, next) => {
+  if (req.user.role !== "meta-admin") {
+    return res.status(403).json({ message: "Access denied: Meta-Admins only" });
+  }
+  next();
+};
+
 exports.register = async (req, res) => {
   const { firstName, lastName, email, phone, password } = req.body;
   if (!email || !password || !firstName || !lastName) return res.status(400).json({ message: 'Missing fields' });

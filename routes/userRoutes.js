@@ -8,6 +8,6 @@ router.post('/login', ctrl.login);
 router.get('/me', auth, ctrl.getMe);
 router.put('/me', auth, ctrl.updateMe);
 router.post('/me/address', auth, ctrl.addAddress);
-
+router.get("/profile", auth, userController.getProfile);
 
 module.exports = router;
