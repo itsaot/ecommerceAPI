@@ -68,10 +68,25 @@ next(err);
 }
 };
 
+// controllers/adminController.js
+const getDashboard = async (req, res) => {
+  try {
+    res.status(200).json({
+      message: "Welcome to the admin dashboard",
+      admin: req.user, // optional if you want to show who’s logged in
+    });
+  } catch (error) {
+    console.error("Error loading dashboard:", error);
+    res.status(500).json({ message: "Error loading admin dashboard" });
+  }
+};
+
+
 module.exports = {
 createAdmin,
 getAllUsers,
 deleteUser,
 getAllProducts,
 deleteProduct,
+getDashboard,
 };
