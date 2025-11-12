@@ -22,4 +22,6 @@ router.delete('/users/:id', auth, isAdmin, async (req, res) => {
   res.json({ message: 'deleted' });
 });
 
+router.get('/users/search', auth, isAdmin, adminController.searchUsers);
+
 module.exports = router;
