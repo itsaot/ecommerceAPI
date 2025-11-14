@@ -17,19 +17,27 @@ exports.register = async (req, res) => {
 // LOGIN
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email.toLowerCase();
+    const { password } = req.body;
+
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const match = await user.comparePassword(password);
     if (!match) return res.status(400).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
     res.json({ token, user });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 // GET CURRENT USER
 exports.getMe = async (req, res) => {
   try {
