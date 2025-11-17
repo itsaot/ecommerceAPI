@@ -1,25 +1,33 @@
-// models/Product.js
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
     sku: { type: String, unique: true, index: true },
+
     name: { type: String, required: true },
     description: String,
-    price: { type: Number, required: true }, // in cents or Rands, your choice
-    currency: { type: String, default: "ZAR" },
-    stock: { type: Number, default: 0 },
-    categories: [String],
-    // ✅ Store local image paths (e.g. "/uploads/product123.jpg")
-    images: [{ url: String }], 
-    specs: mongoose.Schema.Types.Mixed, // key-value engineering specs
 
-    // ✅ Specials section (timed discounts)
+    price: { type: Number, required: true }, // in Rands
+    currency: { type: String, default: "ZAR" },
+
+    stock: { type: Number, default: 0 },
+
+    categories: [String],
+
+    images: [{ url: String }],
+
+    specs: mongoose.Schema.Types.Mixed,
+
+    // ⭐ SPECIALS
     special: {
       isActive: { type: Boolean, default: false },
-      discountPercentage: { type: Number, default: 0 }, // e.g., 10 = 10% off
+      discountPercentage: { type: Number, default: 0 },
+
       startDate: { type: Date },
       endDate: { type: Date },
+
+      // ⭐ This field was missing — it caused the frontend to break
+      specialPrice: { type: Number, default: null },
     },
 
     createdAt: { type: Date, default: Date.now },
@@ -28,22 +36,51 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Automatically check & update special based on date/time
+/* -------------------------------------------------------
+   AUTO CHECK & UPDATE SPECIAL STATUS
+------------------------------------------------------- */
 productSchema.methods.checkAndUpdateSpecial = function () {
   const now = new Date();
+
   if (this.special.startDate && this.special.endDate) {
-    if (now >= this.special.startDate && now <= this.special.endDate) {
-      this.special.isActive = true;
-    } else {
-      this.special.isActive = false;
-    }
+    this.special.isActive =
+      now >= this.special.startDate && now <= this.special.endDate;
+  } else {
+    this.special.isActive = false;
   }
+
   return this.special.isActive;
 };
 
-// Optional: pre-save hook to auto-update `updatedAt`
+/* -------------------------------------------------------
+   AUTO-COMPUTE SPECIAL PRICE
+------------------------------------------------------- */
+productSchema.methods.computeSpecialPrice = function () {
+  if (
+    this.special &&
+    this.special.isActive &&
+    this.special.discountPercentage > 0
+  ) {
+    const discount = this.special.discountPercentage;
+
+    this.special.specialPrice = Math.round(
+      this.price * ((100 - discount) / 100)
+    );
+  } else {
+    // Ensure frontend ALWAYS receives a fallback number
+    this.special.specialPrice = this.price;
+  }
+};
+
+/* -------------------------------------------------------
+   PRE-SAVE HOOK
+------------------------------------------------------- */
 productSchema.pre("save", function (next) {
   this.updatedAt = new Date();
+
+  this.checkAndUpdateSpecial();
+  this.computeSpecialPrice();
+
   next();
 });
 
