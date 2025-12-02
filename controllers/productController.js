@@ -166,11 +166,16 @@ exports.uploadImage = async (req, res) => {
    DELETE PRODUCT
 ------------------------------------------------------- */
 exports.deleteProduct = async (req, res) => {
-  const p = await Product.findByIdAndDelete(req.params.id);
+  try {
+    const p = await Product.findByIdAndDelete(req.params.id);
 
-  if (!p) return res.status(404).json({ message: "Not found" });
+    if (!p) return res.status(404).json({ message: "Not found" });
 
-  res.json({ message: "Deleted" });
+    res.json({ message: "Deleted" });
+
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed", error: err.message });
+  }
 };
 
 
