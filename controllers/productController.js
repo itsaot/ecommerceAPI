@@ -30,9 +30,15 @@ exports.createProduct = async (req, res) => {
   try {
     const { name, description, price, categories, stock } = req.body;
 
-    const images = req.files?.length
-      ? req.files.map((f) => ({ url: `/uploads/${f.filename}` }))
-      : [];
+    // Accept image URLs
+    let images = [];
+    if (req.body.images) {
+      if (Array.isArray(req.body.images)) {
+        images = req.body.images.map(url => ({ url }));
+      } else if (typeof req.body.images === "string") {
+        images = req.body.images.split(",").map(url => ({ url: url.trim() }));
+      }
+    }
 
     const product = new Product({
       name,
@@ -45,17 +51,19 @@ exports.createProduct = async (req, res) => {
         isActive: false,
         discountPercentage: 0,
         specialPrice: price,
-      },
+      }
     });
 
     await product.save();
     computeSpecialPrice(product);
 
     res.status(201).json({ message: "Product created", product });
+
   } catch (err) {
     res.status(500).json({ message: "Create failed", error: err.message });
   }
 };
+
 
 
 /* -------------------------------------------------------
@@ -123,20 +131,33 @@ exports.updateProduct = async (req, res) => {
     const updates = req.body;
 
     if (req.file) {
-      updates.image = `/uploads/${req.file.filename}`;
+      updates.images = updates.images || [];
+      updates.images.push({ url: `/uploads/${req.file.filename}` });
+    }
+
+    // Ensure price is a number
+    if (updates.price !== undefined) updates.price = Number(updates.price);
+
+    // Ensure categories is always array
+    if (updates.categories !== undefined) {
+      updates.categories = Array.isArray(updates.categories)
+        ? updates.categories
+        : [updates.categories];
     }
 
     const product = await Product.findByIdAndUpdate(id, updates, { new: true });
 
-    if (!product) return res.status(404).json({ message: "Not found" });
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
     computeSpecialPrice(product);
 
     res.json({ message: "Updated", product });
   } catch (err) {
+    console.error(err); // logs exact error
     res.status(500).json({ message: "Update failed", error: err.message });
   }
 };
+
 
 
 /* -------------------------------------------------------
