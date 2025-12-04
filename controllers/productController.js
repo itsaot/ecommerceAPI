@@ -94,9 +94,64 @@ exports.createProduct = async (req, res) => {
 
 
 
-
 /* -------------------------------------------------------
    GET ALL PRODUCTS
+------------------------------------------------------- */
+exports.getProducts = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, q, category } = req.query;
+    const filter = {};
+
+    if (q) {
+      filter.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+      ];
+    }
+
+    if (category) {
+      filter.categories = category;
+    }
+
+    const products = await Product.find(filter)
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .sort({ createdAt: -1 });
+
+    products.forEach((p) => computeSpecialPrice(p));
+
+    res.json({
+      page: Number(page),
+      limit: Number(limit),
+      total: products.length,
+      products,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Fetch failed", error: err.message });
+  }
+};
+
+
+/* -------------------------------------------------------
+   GET SINGLE PRODUCT
+------------------------------------------------------- */
+exports.getProduct = async (req, res) => {
+  try {
+    const p = await Product.findById(req.params.id);
+
+    if (!p) return res.status(404).json({ message: "Not found" });
+
+    computeSpecialPrice(p);
+
+    res.json(p);
+  } catch (err) {
+    res.status(500).json({ message: "Fetch failed", error: err.message });
+  }
+};
+
+
+/* -------------------------------------------------------
+   UPDATE PRODUCT
 ------------------------------------------------------- */
 exports.updateProduct = async (req, res) => {
   try {
@@ -139,61 +194,6 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-
-
-/* -------------------------------------------------------
-   GET SINGLE PRODUCT
-------------------------------------------------------- */
-exports.getProduct = async (req, res) => {
-  try {
-    const p = await Product.findById(req.params.id);
-
-    if (!p) return res.status(404).json({ message: "Not found" });
-
-    computeSpecialPrice(p);
-
-    res.json(p);
-  } catch (err) {
-    res.status(500).json({ message: "Fetch failed", error: err.message });
-  }
-};
-
-
-/* -------------------------------------------------------
-   UPDATE PRODUCT
-------------------------------------------------------- */
-exports.updateProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    if (req.file) {
-      updates.images = updates.images || [];
-      updates.images.push({ url: `/uploads/${req.file.filename}` });
-    }
-
-    // Ensure price is a number
-    if (updates.price !== undefined) updates.price = Number(updates.price);
-
-    // Ensure categories is always array
-    if (updates.categories !== undefined) {
-      updates.categories = Array.isArray(updates.categories)
-        ? updates.categories
-        : [updates.categories];
-    }
-
-    const product = await Product.findByIdAndUpdate(id, updates, { new: true });
-
-    if (!product) return res.status(404).json({ message: "Product not found" });
-
-    computeSpecialPrice(product);
-
-    res.json({ message: "Updated", product });
-  } catch (err) {
-    console.error(err); // logs exact error
-    res.status(500).json({ message: "Update failed", error: err.message });
-  }
-};
 
 
 
