@@ -1,29 +1,6 @@
 const Product = require('../models/Product');
 
 /* -------------------------------------------------------
-   Utility: Compute special price if active
-------------------------------------------------------- */
-function computeSpecialPrice(product) {
-  if (
-    product.special &&
-    product.special.isActive &&
-    product.special.discountPercentage > 0
-  ) {
-    const discount = product.special.discountPercentage;
-    product.special.specialPrice = Math.round(
-      (product.price * (100 - discount)) / 100
-    );
-  } else {
-    // Always return a numeric fallback so frontend never breaks
-    product.special = {
-      ...product.special,
-      specialPrice: product.price,
-    };
-  }
-}
-
-
-/* -------------------------------------------------------
    CREATE PRODUCT
 ------------------------------------------------------- */
 exports.createProduct = async (req, res) => {
@@ -238,6 +215,25 @@ exports.deleteProduct = async (req, res) => {
 
 
 /* -------------------------------------------------------
+   UTILITY: Compute special price safely
+------------------------------------------------------- */
+function computeSpecialPrice(product) {
+  if (!product.special) return;
+
+  const { discountPercentage = 0, isActive = false } = product.special;
+
+  // Compute discounted price only if active and discount > 0
+  if (isActive && discountPercentage > 0) {
+    product.special.specialPrice = Math.round(
+      (product.price * (100 - discountPercentage)) / 100
+    );
+  } else {
+    // Fallback to original price without overwriting other fields
+    product.special.specialPrice = product.price;
+  }
+}
+
+/* -------------------------------------------------------
    SET SPECIAL
 ------------------------------------------------------- */
 exports.setSpecial = async (req, res) => {
@@ -246,29 +242,32 @@ exports.setSpecial = async (req, res) => {
     const { discountPercentage, startDate, endDate } = req.body;
 
     const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ message: "Not found" });
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
     const now = new Date();
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Set special fields
     product.special = {
+      ...product.special,        // preserve existing fields if any
       isActive: now >= start && now <= end,
-      discountPercentage,
+      discountPercentage: Number(discountPercentage) || 0,
       startDate: start,
       endDate: end,
     };
 
+    // Compute specialPrice safely
     computeSpecialPrice(product);
 
     await product.save();
 
-    res.json({ message: "Special set", product });
+    res.json({ message: "Special set successfully", product });
   } catch (err) {
-    res.status(500).json({ message: "Special failed", error: err.message });
+    console.error("Set special failed:", err);
+    res.status(500).json({ message: "Special set failed", error: err.message });
   }
 };
-
 
 /* -------------------------------------------------------
    REMOVE SPECIAL
@@ -278,9 +277,11 @@ exports.removeSpecial = async (req, res) => {
     const { productId } = req.params;
 
     const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ message: "Not found" });
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
+    // Reset special fields
     product.special = {
+      ...product.special,
       isActive: false,
       discountPercentage: 0,
       specialPrice: product.price,
@@ -290,8 +291,9 @@ exports.removeSpecial = async (req, res) => {
 
     await product.save();
 
-    res.json({ message: "Special removed", product });
+    res.json({ message: "Special removed successfully", product });
   } catch (err) {
+    console.error("Remove special failed:", err);
     res.status(500).json({ message: "Special remove failed", error: err.message });
   }
 };
