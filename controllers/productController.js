@@ -28,15 +28,34 @@ function computeSpecialPrice(product) {
 ------------------------------------------------------- */
 exports.createProduct = async (req, res) => {
   try {
-    const { name, description, price, categories, stock } = req.body;
+    let { name, description, price, categories, stock, images } = req.body;
 
-    // Accept image URLs
-    let images = [];
-    if (req.body.images) {
-      if (Array.isArray(req.body.images)) {
-        images = req.body.images.map(url => ({ url }));
-      } else if (typeof req.body.images === "string") {
-        images = req.body.images.split(",").map(url => ({ url: url.trim() }));
+    // Validate required fields
+    if (!name || !description || !price) {
+      return res.status(400).json({ message: "Name, description, and price are required" });
+    }
+
+    // Ensure price is a number
+    price = Number(price);
+    if (isNaN(price)) {
+      return res.status(400).json({ message: "Price must be a number" });
+    }
+
+    // Normalize categories
+    if (!categories) categories = [];
+    categories = Array.isArray(categories) ? categories : [categories];
+
+    // Normalize images
+    let formattedImages = [];
+    if (images) {
+      if (Array.isArray(images)) {
+        formattedImages = images.filter(Boolean).map(url => ({ url }));
+      } else if (typeof images === "string") {
+        formattedImages = images
+          .split(",")
+          .map(url => url.trim())
+          .filter(Boolean)
+          .map(url => ({ url }));
       }
     }
 
@@ -44,25 +63,32 @@ exports.createProduct = async (req, res) => {
       name,
       description,
       price,
-      categories: Array.isArray(categories) ? categories : [categories],
-      stock: stock || 0,
-      images,
+      categories,
+      stock: stock ? Number(stock) : 0,
+      images: formattedImages,
       special: {
         isActive: false,
         discountPercentage: 0,
-        specialPrice: price,
+        specialPrice: price
       }
     });
 
     await product.save();
-    computeSpecialPrice(product);
+
+    // Safely compute special price
+    try {
+      computeSpecialPrice(product);
+    } catch (err) {
+      console.warn("computeSpecialPrice failed:", err.message);
+    }
 
     res.status(201).json({ message: "Product created", product });
-
   } catch (err) {
+    console.error("Product save error:", err);
     res.status(500).json({ message: "Create failed", error: err.message });
   }
 };
+
 
 
 
