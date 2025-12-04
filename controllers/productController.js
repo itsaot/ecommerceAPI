@@ -26,71 +26,46 @@ function computeSpecialPrice(product) {
 /* -------------------------------------------------------
    CREATE PRODUCT
 ------------------------------------------------------- */
-exports.createProduct = async (req, res) => {
+exports.updateProduct = async (req, res) => {
   try {
-    let { name, description, price, categories, stock, images } = req.body;
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // Validate required fields
-    if (!name || !description || !price) {
-      return res.status(400).json({ message: "Name, description, and price are required" });
-    }
+    const { name, description, price, categories, stock, images, special } = req.body;
 
-    // Ensure price is a number
-    price = Number(price);
-    if (isNaN(price)) {
-      return res.status(400).json({ message: "Price must be a number" });
-    }
+    if (name) product.name = name;
+    if (description) product.description = description;
+    if (price !== undefined) product.price = Number(price);
+    if (categories) product.categories = Array.isArray(categories) ? categories : [categories];
+    if (stock !== undefined) product.stock = Number(stock);
 
-    // Normalize categories
-    if (!categories) categories = [];
-    categories = Array.isArray(categories) ? categories : [categories];
-
-    // Normalize images
-    let formattedImages = [];
+    // Images
     if (images) {
       if (Array.isArray(images)) {
-        formattedImages = images.filter(Boolean).map(url => ({ url }));
+        product.images = images.filter(Boolean).map(url => ({ url }));
       } else if (typeof images === "string") {
-        formattedImages = images
-          .split(",")
-          .map(url => url.trim())
-          .filter(Boolean)
-          .map(url => ({ url }));
+        product.images = images.split(",").map(url => ({ url: url.trim() })).filter(Boolean);
       }
     }
 
-    const product = new Product({
-      name,
-      description,
-      price,
-      categories,
-      stock: stock ? Number(stock) : 0,
-      images: formattedImages,
-      special: {
-        isActive: false,
-        discountPercentage: 0,
-        specialPrice: price
-      }
-    });
+    // Special fields
+    if (special) {
+      product.special.isActive = special.isActive ?? product.special.isActive;
+      product.special.discountPercentage = special.discountPercentage ?? product.special.discountPercentage;
+      product.special.specialPrice = special.specialPrice ?? product.special.specialPrice;
+    }
 
     await product.save();
 
-    // Safely compute special price
-    try {
-      computeSpecialPrice(product);
-    } catch (err) {
-      console.warn("computeSpecialPrice failed:", err.message);
-    }
+    // Recompute special price safely
+    try { computeSpecialPrice(product); } catch (err) { console.warn("computeSpecialPrice failed:", err.message); }
 
-    res.status(201).json({ message: "Product created", product });
+    res.status(200).json({ message: "Product updated", product });
   } catch (err) {
     console.error("Product save error:", err);
-    res.status(500).json({ message: "Create failed", error: err.message });
+    res.status(500).json({ message: "Update failed", error: err.message });
   }
 };
-
-
-
 
 /* -------------------------------------------------------
    GET ALL PRODUCTS
