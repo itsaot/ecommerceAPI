@@ -26,6 +26,78 @@ function computeSpecialPrice(product) {
 /* -------------------------------------------------------
    CREATE PRODUCT
 ------------------------------------------------------- */
+exports.createProduct = async (req, res) => {
+  try {
+    let { name, description, price, categories, stock, images, special } = req.body;
+
+    // Validate required fields
+    if (!name || !description || price === undefined) {
+      return res.status(400).json({ message: "Name, description, and price are required" });
+    }
+
+    // Convert numbers
+    price = Number(price);
+    if (isNaN(price)) return res.status(400).json({ message: "Price must be a number" });
+    stock = stock ? Number(stock) : 0;
+
+    // Normalize categories
+    if (!categories) categories = [];
+    categories = Array.isArray(categories) ? categories : [categories];
+
+    // Normalize images
+    let formattedImages = [];
+    if (images) {
+      if (Array.isArray(images)) {
+        formattedImages = images.filter(Boolean).map(url => ({ url }));
+      } else if (typeof images === "string") {
+        formattedImages = images
+          .split(",")
+          .map(url => url.trim())
+          .filter(Boolean)
+          .map(url => ({ url }));
+      }
+    }
+
+    // Normalize special fields
+    const defaultSpecial = { isActive: false, discountPercentage: 0, specialPrice: price };
+    special = special || {};
+    const finalSpecial = {
+      isActive: special.isActive ?? defaultSpecial.isActive,
+      discountPercentage: Number(special.discountPercentage ?? defaultSpecial.discountPercentage),
+      specialPrice: Number(special.specialPrice ?? defaultSpecial.specialPrice),
+    };
+
+    // Create product
+    const product = new Product({
+      name,
+      description,
+      price,
+      categories,
+      stock,
+      images: formattedImages,
+      special: finalSpecial,
+    });
+
+    await product.save();
+
+    // Safely compute special price
+    try { computeSpecialPrice(product); } catch (err) { console.warn("computeSpecialPrice failed:", err.message); }
+
+    res.status(201).json({ message: "Product created", product });
+
+  } catch (err) {
+    console.error("Product save error:", err);
+    res.status(500).json({ message: "Create failed", error: err.message });
+  }
+};
+
+
+
+
+
+/* -------------------------------------------------------
+   GET ALL PRODUCTS
+------------------------------------------------------- */
 exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -67,42 +139,6 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-/* -------------------------------------------------------
-   GET ALL PRODUCTS
-------------------------------------------------------- */
-exports.getProducts = async (req, res) => {
-  try {
-    const { page = 1, limit = 20, q, category } = req.query;
-    const filter = {};
-
-    if (q) {
-      filter.$or = [
-        { name: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
-      ];
-    }
-
-    if (category) {
-      filter.categories = category;
-    }
-
-    const products = await Product.find(filter)
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
-
-    products.forEach((p) => computeSpecialPrice(p));
-
-    res.json({
-      page: Number(page),
-      limit: Number(limit),
-      total: products.length,
-      products,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Fetch failed", error: err.message });
-  }
-};
 
 
 /* -------------------------------------------------------
