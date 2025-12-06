@@ -90,16 +90,17 @@ exports.getOrder = async (req, res) => {
 exports.adminGetOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate('userId', 'firstName lastName email')
-      .populate('items.product')
+      .populate('userId', 'firstName lastName email') // use correct User fields
+      .populate('items.productId') // <-- fixed
       .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (err) {
-    console.error('Admin get orders error:', err.message);
+    console.error('Admin get orders error:', err);
     res.status(500).json({ message: 'Failed to fetch all orders', error: err.message });
   }
 };
+
 
 /* -------------------------------------------------------
    UPDATE PAYMENT STATUS (ADMIN)
