@@ -1,43 +1,33 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
-  user: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
-  },
-
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [{
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     name: String,
-    price: Number,   // snapshot at purchase time
-    quantity: Number
+    quantity: { type: Number, default: 1 },
+    price: { type: Number, required: true },
   }],
-
-  shippingAddress: Object,
-
-  total: Number,
-  currency: { type: String, default: 'ZAR' },
-
-  paymentStatus: { 
+  total: { type: Number, required: true },
+  status: { 
     type: String, 
-    enum: ['pending','paid','failed','refunded'], 
-    default: 'pending' 
+    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+    default: 'pending'
   },
-
-  // ⭐ Paystack fields
-  paystackReference: String,     // Your generated reference
-  transactionId: String,         // Paystack trans id after verification
-  gatewayResponse: String,       // paystack response (optional)
-
-  // Email receipt
-  receipt: {
-    html: String,
-    sentAt: Date
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed'],
+    default: 'pending'
   },
-
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: Date
-});
+  paymentReference: { type: String, unique: true, sparse: true },
+  paidAt: Date,
+  shippingAddress: {
+    street: String,
+    city: String,
+    state: String,
+    zip: String,
+    country: String,
+  },
+}, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

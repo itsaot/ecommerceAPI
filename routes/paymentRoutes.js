@@ -1,19 +1,15 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const checkout = require("../controllers/checkoutController");
+const paymentController = require('../controllers/paymentController');
+const { auth } = require('../middleware/auth'); // <-- updated import
 
-// This matches frontend: payments.createSession
-router.post("/create-session", checkout.createPaystackPayment);
+// Create payment session (requires auth)
+router.post('/create-session', auth, paymentController.createSession);
 
-// This matches frontend: payments.process
-// For Paystack you DON’T need to process cards manually.
-// Paystack handles everything on their hosted page.
-router.post("/process", (req, res) => {
-  return res.json({
-    success: true,
-    message: "Paystack handles card processing automatically",
-    note: "No server-side card processing required"
-  });
-});
+// Verify payment (public - called after redirect)
+router.get('/verify/:reference', paymentController.verifyPayment);
+
+// Webhook (public - called by Paystack)
+router.post('/webhook', paymentController.webhook);
 
 module.exports = router;
