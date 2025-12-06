@@ -66,19 +66,20 @@ exports.getUserOrders = async (req, res) => {
 exports.getOrder = async (req, res) => {
   try {
     const orderId = req.params.id;
+    const userId = req.user._id;
 
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       return res.status(400).json({ message: 'Invalid order ID' });
     }
 
-    const order = await Order.findOne({ _id: orderId, userId: req.user._id })
-      .populate('items.product');
+    const order = await Order.findOne({ _id: orderId, userId })
+      .populate('items.productId'); // <-- use productId, not product
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     res.json(order);
   } catch (err) {
-    console.error('Get order error:', err.message);
+    console.error('Get order error:', err);
     res.status(500).json({ message: 'Failed to fetch order', error: err.message });
   }
 };
