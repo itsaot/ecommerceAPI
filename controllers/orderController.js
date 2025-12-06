@@ -49,15 +49,16 @@ exports.createOrder = async (req, res) => {
 exports.getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user._id })
-      .populate('items.product')
+      .populate('items.productId') // <-- use productId
       .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (err) {
-    console.error('Get user orders error:', err.message);
+    console.error('Get user orders error:', err);
     res.status(500).json({ message: 'Failed to load orders', error: err.message });
   }
 };
+
 
 /* -------------------------------------------------------
    GET SINGLE ORDER (USER)
