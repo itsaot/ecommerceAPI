@@ -5,7 +5,6 @@ const User = require('../models/User');
 
 /* -------------------------------------------------------
    CREATE ORDER (USER)
-   Usually called after Paystack session is created
 ------------------------------------------------------- */
 exports.createOrder = async (req, res) => {
   try {
@@ -44,25 +43,25 @@ exports.createOrder = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   GET ALL ORDERS (USER)
+   GET ALL ORDERS FOR LOGGED-IN USER
 ------------------------------------------------------- */
 exports.getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user._id })
-      .populate('items.productId') // <-- use productId
+      .populate('items.productId') // populate product details
       .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (err) {
-    console.error('Get user orders error:', err);
+    console.error('Get user orders error:', err.message);
     res.status(500).json({ message: 'Failed to load orders', error: err.message });
   }
 };
 
-
 /* -------------------------------------------------------
    GET SINGLE ORDER (USER)
 ------------------------------------------------------- */
+// GET /api/orders - Get orders based on user role
 exports.getOrder = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
@@ -88,23 +87,19 @@ exports.getOrder = async (req, res) => {
   }
 };
 
-/* -------------------------------------------------------
-   GET ALL ORDERS (ADMIN)
-------------------------------------------------------- */
-exports.adminGetOrders = async (req, res) => {
+// GET /api/orders/admin/all - Admin endpoint for all orders
+exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate('userId', 'firstName lastName email') // use correct User fields
-      .populate('items.productId') // <-- fixed
-      .sort({ createdAt: -1 });
-
+      .sort({ createdAt: -1 })
+      .populate('userId', 'email firstName lastName');
+    
     res.json(orders);
-  } catch (err) {
-    console.error('Admin get orders error:', err);
-    res.status(500).json({ message: 'Failed to fetch all orders', error: err.message });
+  } catch (error) {
+    console.error('Get all orders error:', error.message);
+    res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
   }
 };
-
 
 /* -------------------------------------------------------
    UPDATE PAYMENT STATUS (ADMIN)
