@@ -1,11 +1,11 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 
 /* -------------------------------------------------------
-   USER: CREATE ORDER
-   Usually called after Paystack session is created,
-   but you can keep this if you allow server-side order creation.
+   CREATE ORDER (USER)
+   Usually called after Paystack session is created
 ------------------------------------------------------- */
 exports.createOrder = async (req, res) => {
   try {
@@ -44,7 +44,7 @@ exports.createOrder = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   USER: GET ALL MY ORDERS
+   GET ALL ORDERS (USER)
 ------------------------------------------------------- */
 exports.getUserOrders = async (req, res) => {
   try {
@@ -60,14 +60,18 @@ exports.getUserOrders = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   USER: GET ONE ORDER
+   GET SINGLE ORDER (USER)
 ------------------------------------------------------- */
 exports.getOrder = async (req, res) => {
   try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      userId: req.user._id
-    }).populate('items.product');
+    const orderId = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findOne({ _id: orderId, userId: req.user._id })
+      .populate('items.product');
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
@@ -79,12 +83,12 @@ exports.getOrder = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   ADMIN: GET ALL ORDERS
+   GET ALL ORDERS (ADMIN)
 ------------------------------------------------------- */
 exports.adminGetOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate('userId', 'name email')
+      .populate('userId', 'firstName lastName email')
       .populate('items.product')
       .sort({ createdAt: -1 });
 
@@ -96,8 +100,7 @@ exports.adminGetOrders = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   ADMIN: UPDATE PAYMENT STATUS
-   Useful for manual adjustments
+   UPDATE PAYMENT STATUS (ADMIN)
 ------------------------------------------------------- */
 exports.adminUpdateStatus = async (req, res) => {
   try {
@@ -109,36 +112,11 @@ exports.adminUpdateStatus = async (req, res) => {
       { new: true }
     );
 
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
     res.json(order);
   } catch (err) {
     console.error('Admin update order status error:', err.message);
     res.status(500).json({ message: 'Update failed', error: err.message });
-  }
-};
-
-/* -------------------------------------------------------
-   GET ORDERS BASED ON ROLE (optional combined endpoint)
-------------------------------------------------------- */
-exports.getOrders = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const role = req.user.role;
-
-    let orders;
-    if (role === 'admin' || role === 'meta-admin') {
-      orders = await Order.find()
-        .sort({ createdAt: -1 })
-        .populate('userId', 'name email')
-        .populate('items.product');
-    } else {
-      orders = await Order.find({ userId })
-        .sort({ createdAt: -1 })
-        .populate('items.product');
-    }
-
-    res.json(orders);
-  } catch (err) {
-    console.error('Get orders error:', err.message);
-    res.status(500).json({ message: 'Failed to fetch orders', error: err.message });
   }
 };
