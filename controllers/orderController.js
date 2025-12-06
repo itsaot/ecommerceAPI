@@ -65,22 +65,26 @@ exports.getUserOrders = async (req, res) => {
 ------------------------------------------------------- */
 exports.getOrder = async (req, res) => {
   try {
-    const orderId = req.params.id;
-    const userId = req.user._id;
+    const userId = req.user?.id || req.user?._id;
+    const userRole = req.user?.role;
 
-    if (!mongoose.Types.ObjectId.isValid(orderId)) {
-      return res.status(400).json({ message: 'Invalid order ID' });
+    let orders;
+    
+    // Admin and meta-admin can see all orders
+    if (userRole === 'admin' || userRole === 'meta-admin') {
+      orders = await Order.find()
+        .sort({ createdAt: -1 })
+        .populate('userId', 'email firstName lastName');
+    } else {
+      // Regular users only see their own orders
+      orders = await Order.find({ userId })
+        .sort({ createdAt: -1 });
     }
 
-    const order = await Order.findOne({ _id: orderId, userId })
-      .populate('items.productId'); // <-- use productId, not product
-
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    res.json(order);
-  } catch (err) {
-    console.error('Get order error:', err);
-    res.status(500).json({ message: 'Failed to fetch order', error: err.message });
+    res.json(orders);
+  } catch (error) {
+    console.error('Get orders error:', error.message);
+    res.status(500).json({ message: 'Failed to fetch orders', error: error.message });
   }
 };
 
