@@ -4,16 +4,17 @@ const User = require('../models/User');
 const adminController = require("../controllers/adminController");
 const { auth, isAdmin } = require('../middleware/auth');
 
+// 🏠 Admin Dashboard
 router.get("/dashboard", auth, isAdmin, adminController.getDashboard);
 
-// 🔥 search FIRST
+// 🔍 Search users
 router.get('/users/search', auth, isAdmin, adminController.searchUsers);
 
-// create admin/user
+// ➕ Create admin/user
 router.post('/users', auth, isAdmin, async (req, res) => {
   const { firstName, lastName, email, password, role } = req.body;
   if (!firstName || !lastName || !email || !password)
-    return res.status(400).json({ message: 'Missing' });
+    return res.status(400).json({ message: 'Missing fields' });
 
   const user = await User.create({
     firstName,
@@ -26,16 +27,22 @@ router.post('/users', auth, isAdmin, async (req, res) => {
   res.json({ id: user._id, email: user.email, role: user.role });
 });
 
-// list users
+// 📋 List all users
 router.get('/users', auth, isAdmin, async (req, res) => {
   const users = await User.find().select('-password');
   res.json(users);
 });
 
-// delete user
+// ❌ Delete user
 router.delete('/users/:id', auth, isAdmin, async (req, res) => {
   await User.findByIdAndDelete(req.params.id);
   res.json({ message: 'deleted' });
 });
+
+// 🔼 Promote user → admin
+router.put("/users/:id/promote", auth, isAdmin, adminController.promoteUser);
+
+// 🔽 Demote user → normal user
+router.put("/users/:id/demote", auth, isAdmin, adminController.demoteUser);
 
 module.exports = router;

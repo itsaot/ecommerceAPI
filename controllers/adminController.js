@@ -1,79 +1,90 @@
 const User = require("../models/User");
 const Product = require("../models/Product");
 
-// 🧑‍💼 Create another admin or user
-const createAdmin = async (req, res, next) => {
-try {
-const { firstName, lastName, email, password, role } = req.body;
+/* -------------------------------------------------------
+   CREATE ADMIN OR USER
+------------------------------------------------------- */
+exports.createAdmin = async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, password, role } = req.body;
 
-```
-const existing = await User.findOne({ email });
-if (existing) return res.status(400).json({ message: "Email already exists" });
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: "Email already exists" });
 
-const user = await User.create({
-  firstName,
-  lastName,
-  email,
-  password,
-  role: role || "admin",
-});
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      role: role || "admin",
+    });
 
-res.status(201).json({ message: "Admin created", user });
-```
-
-} catch (err) {
-next(err);
-}
+    res.status(201).json({ message: "Admin created", user });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// 📋 Get all users
-const getAllUsers = async (req, res, next) => {
-try {
-const users = await User.find().select("-password");
-res.json(users);
-} catch (err) {
-next(err);
-}
+/* -------------------------------------------------------
+   GET ALL USERS
+------------------------------------------------------- */
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// ❌ Delete user
-const deleteUser = async (req, res, next) => {
-try {
-const user = await User.findByIdAndDelete(req.params.id);
-if (!user) return res.status(404).json({ message: "User not found" });
-res.json({ message: "User deleted" });
-} catch (err) {
-next(err);
-}
+/* -------------------------------------------------------
+   DELETE USER
+------------------------------------------------------- */
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "User deleted" });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// 🏭 Get all products (admin)
-const getAllProducts = async (req, res, next) => {
-try {
-const products = await Product.find();
-res.json(products);
-} catch (err) {
-next(err);
-}
+/* -------------------------------------------------------
+   GET ALL PRODUCTS
+------------------------------------------------------- */
+exports.getAllProducts = async (req, res, next) => {
+  try {
+    const products = await Product.find();
+    res.json(products);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// 🗑 Delete product
-const deleteProduct = async (req, res, next) => {
-try {
-const product = await Product.findByIdAndDelete(req.params.id);
-if (!product) return res.status(404).json({ message: "Product not found" });
-res.json({ message: "Product deleted" });
-} catch (err) {
-next(err);
-}
+/* -------------------------------------------------------
+   DELETE PRODUCT
+------------------------------------------------------- */
+exports.deleteProduct = async (req, res, next) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    res.json({ message: "Product deleted" });
+  } catch (err) {
+    next(err);
+  }
 };
 
-// controllers/adminController.js
-const getDashboard = async (req, res) => {
+/* -------------------------------------------------------
+   ADMIN DASHBOARD
+------------------------------------------------------- */
+exports.getDashboard = async (req, res) => {
   try {
     res.status(200).json({
       message: "Welcome to the admin dashboard",
-      admin: req.user, // optional if you want to show who’s logged in
+      admin: req.user,
     });
   } catch (error) {
     console.error("Error loading dashboard:", error);
@@ -81,30 +92,69 @@ const getDashboard = async (req, res) => {
   }
 };
 
-const searchUsers = async (req, res) => {
+/* -------------------------------------------------------
+   SEARCH USERS
+------------------------------------------------------- */
+exports.searchUsers = async (req, res) => {
   try {
     const { query } = req.query;
-    if (!query) return res.status(400).json({ message: 'Query required' });
+
+    if (!query) return res.status(400).json({ message: "Query required" });
 
     const users = await User.find({
       $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { email: { $regex: query, $options: 'i' } }
+        { name: { $regex: query, $options: "i" } },
+        { email: { $regex: query, $options: "i" } }
       ]
-    }).select('-password');
+    }).select("-password");
 
     res.status(200).json(users);
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = {
-createAdmin,
-getAllUsers,
-deleteUser,
-getAllProducts,
-deleteProduct,
-getDashboard,
-searchUsers,
+/* -------------------------------------------------------
+   PROMOTE USER → ADMIN
+------------------------------------------------------- */
+exports.promoteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { role: "admin" },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "User promoted to admin", user });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* -------------------------------------------------------
+   DEMOTE USER → NORMAL USER
+------------------------------------------------------- */
+exports.demoteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { role: "user" },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "User demoted to user", user });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
