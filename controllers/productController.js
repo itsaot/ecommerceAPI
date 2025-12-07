@@ -1,7 +1,7 @@
 const Product = require('../models/Product');
 
 /* -------------------------------------------------------
-   CREATE PRODUCT (with logs)
+   CREATE PRODUCT
 ------------------------------------------------------- */
 exports.createProduct = async (req, res) => {
   try {
@@ -58,8 +58,14 @@ exports.createProduct = async (req, res) => {
 
     console.log("⭐ Final special:", finalSpecial);
 
+    // -----------------------------
+    // GENERATE UNIQUE SKU
+    // -----------------------------
+    const sku = "SKU-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+
     // Create product
     const product = new Product({
+      sku, // <-- automatically generated
       name,
       description,
       price,
@@ -82,9 +88,6 @@ exports.createProduct = async (req, res) => {
     res.status(500).json({ message: "Create failed", error: err.message });
   }
 };
-
-
-
 
 /* -------------------------------------------------------
    UPDATE PRODUCT
