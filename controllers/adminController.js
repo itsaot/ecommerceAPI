@@ -115,9 +115,7 @@ exports.searchUsers = async (req, res) => {
   }
 };
 
-/* -------------------------------------------------------
-   PROMOTE USER → ADMIN
-------------------------------------------------------- */
+// 🔼 Promote user
 exports.promoteUser = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -131,15 +129,12 @@ exports.promoteUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json({ message: "User promoted to admin", user });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-/* -------------------------------------------------------
-   DEMOTE USER → NORMAL USER
-------------------------------------------------------- */
+// 🔽 Demote user
 exports.demoteUser = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -153,8 +148,8 @@ exports.demoteUser = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json({ message: "User demoted to user", user });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
