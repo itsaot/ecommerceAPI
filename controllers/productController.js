@@ -1,10 +1,12 @@
 const Product = require('../models/Product');
 
 /* -------------------------------------------------------
-   CREATE PRODUCT
+   CREATE PRODUCT (with logs)
 ------------------------------------------------------- */
 exports.createProduct = async (req, res) => {
   try {
+    console.log("🔥 Incoming POST /products body:", req.body);
+
     let { 
       name, 
       description, 
@@ -15,105 +17,144 @@ exports.createProduct = async (req, res) => {
       special 
     } = req.body;
 
-    // ------------------------------------------------------------------
-    // VALIDATION
-    // ------------------------------------------------------------------
+    console.log("📝 Parsed fields:", { name, description, price, categories, stock, images, special });
+
+    // REQUIRE FIELDS
     if (!name || !description || price === undefined) {
-      return res
-        .status(400)
-        .json({ message: "Name, description, and price are required" });
+      console.log("❌ Missing required fields");
+      return res.status(400).json({
+        message: "Name, description, and price are required",
+      });
     }
 
-    // ------------------------------------------------------------------
-    // NORMALIZE NUMBERS
-    // ------------------------------------------------------------------
-    price = Number(price);
-    if (isNaN(price)) {
-      return res.status(400).json({ message: "Price must be a valid number" });
-    }
-
-    stock = stock ? Number(stock) : 0;
-
-    // ------------------------------------------------------------------
-    // NORMALIZE CATEGORIES
-    // ------------------------------------------------------------------
+    // Categories
     if (!categories) categories = [];
-    if (!Array.isArray(categories)) {
-      categories = [categories];
-    }
+    if (!Array.isArray(categories)) categories = [categories];
 
-    // ------------------------------------------------------------------
-    // NORMALIZE IMAGES
-    // ------------------------------------------------------------------
+    console.log("📦 Final categories:", categories);
+
+    // Images
     let formattedImages = [];
     if (images) {
       if (Array.isArray(images)) {
-        formattedImages = images
-          .filter(Boolean)
-          .map((url) => ({ url }));
+        formattedImages = images.filter(Boolean).map(url => ({ url }));
       } else if (typeof images === "string") {
         formattedImages = images
           .split(",")
-          .map((url) => url.trim())
+          .map(url => url.trim())
           .filter(Boolean)
-          .map((url) => ({ url }));
+          .map(url => ({ url }));
       }
     }
 
-    // ------------------------------------------------------------------
-    // NORMALIZE SPECIAL FIELDS
-    // ------------------------------------------------------------------
-    const defaultSpecial = {
-      isActive: false,
-      discountPercentage: 0,
-      specialPrice: price,
-    };
+    console.log("🖼 Final images:", formattedImages);
 
-    special = special || {};
-
+    // Special
     const finalSpecial = {
-      isActive: Boolean(special.isActive ?? defaultSpecial.isActive),
-      discountPercentage: Number(
-        special.discountPercentage ?? defaultSpecial.discountPercentage
-      ),
-      specialPrice: Number(
-        special.specialPrice ?? defaultSpecial.specialPrice
-      ),
+      isActive: special?.isActive ?? false,
+      discountPercentage: special?.discountPercentage ?? 0,
+      specialPrice: special?.specialPrice ?? price,
     };
 
-    // ------------------------------------------------------------------
-    // BUILD PRODUCT
-    // ------------------------------------------------------------------
+    console.log("⭐ Final special:", finalSpecial);
+
+    // Create product
     const product = new Product({
       name,
       description,
       price,
       categories,
-      stock,
+      stock: stock ?? 0,
       images: formattedImages,
       special: finalSpecial,
     });
 
-    // ------------------------------------------------------------------
-    // COMPUTE SPECIAL PRICE BEFORE SAVING
-    // ------------------------------------------------------------------
-    computeSpecialPrice(product);
+    console.log("💾 Saving product:", product);
 
     await product.save();
 
-    return res.status(201).json({
-      message: "Product created",
-      product,
-    });
+    console.log("✅ Product saved successfully:", product);
+
+    res.status(201).json({ message: "Product created", product });
 
   } catch (err) {
-    console.error("CREATE PRODUCT ERROR:", err);
-    return res.status(500).json({
-      message: "Create failed",
-      error: err.message,
-    });
+    console.error("❌ Create failed ERROR:", err);
+    res.status(500).json({ message: "Create failed", error: err.message });
   }
 };
+
+
+
+
+/* -------------------------------------------------------
+   UPDATE PRODUCT
+------------------------------------------------------- */
+exports.updateProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    let { 
+      name, 
+      description, 
+      price, 
+      categories, 
+      stock, 
+      images, 
+      special 
+    } = req.body;
+
+    // SAME LOGIC AS CREATE — Only apply if field is sent
+    if (name !== undefined) product.name = name;
+    if (description !== undefined) product.description = description;
+    if (price !== undefined) product.price = price;
+
+    // Categories
+    if (categories !== undefined) {
+      if (!Array.isArray(categories)) {
+        categories = [categories];
+      }
+      product.categories = categories;
+    }
+
+    // Images
+    if (images !== undefined) {
+      if (Array.isArray(images)) {
+        product.images = images.filter(Boolean).map(url => ({ url }));
+      } else if (typeof images === "string") {
+        product.images = images
+          .split(",")
+          .map(url => url.trim())
+          .filter(Boolean)
+          .map(url => ({ url }));
+      }
+    }
+
+    // Special
+    if (special !== undefined) {
+      product.special = {
+        isActive: special?.isActive ?? product.special.isActive,
+        discountPercentage: special?.discountPercentage ?? product.special.discountPercentage,
+        specialPrice: special?.specialPrice ?? product.special.specialPrice,
+      };
+    }
+
+    // Stock
+    if (stock !== undefined) {
+      product.stock = stock;
+    }
+
+    await product.save();
+
+    res.status(200).json({ message: "Product updated", product });
+  } catch (err) {
+    console.error("Update failed:", err);
+    res.status(500).json({ message: "Update failed", error: err.message });
+  }
+};
+
 
 /* -------------------------------------------------------
    GET ALL PRODUCTS
@@ -171,49 +212,7 @@ exports.getProduct = async (req, res) => {
 };
 
 
-/* -------------------------------------------------------
-   UPDATE PRODUCT
-------------------------------------------------------- */
-exports.updateProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
 
-    const { name, description, price, categories, stock, images, special } = req.body;
-
-    if (name) product.name = name;
-    if (description) product.description = description;
-    if (price !== undefined) product.price = Number(price);
-    if (categories) product.categories = Array.isArray(categories) ? categories : [categories];
-    if (stock !== undefined) product.stock = Number(stock);
-
-    // Images
-    if (images) {
-      if (Array.isArray(images)) {
-        product.images = images.filter(Boolean).map(url => ({ url }));
-      } else if (typeof images === "string") {
-        product.images = images.split(",").map(url => ({ url: url.trim() })).filter(Boolean);
-      }
-    }
-
-    // Special fields
-    if (special) {
-      product.special.isActive = special.isActive ?? product.special.isActive;
-      product.special.discountPercentage = special.discountPercentage ?? product.special.discountPercentage;
-      product.special.specialPrice = special.specialPrice ?? product.special.specialPrice;
-    }
-
-    await product.save();
-
-    // Recompute special price safely
-    try { computeSpecialPrice(product); } catch (err) { console.warn("computeSpecialPrice failed:", err.message); }
-
-    res.status(200).json({ message: "Product updated", product });
-  } catch (err) {
-    console.error("Product save error:", err);
-    res.status(500).json({ message: "Update failed", error: err.message });
-  }
-};
 
 
 
