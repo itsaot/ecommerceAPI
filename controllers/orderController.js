@@ -95,7 +95,7 @@ exports.getAllOrders = async (req, res) => {
 };
 
 /* -------------------------------------------------------
-   UPDATE PAYMENT STATUS (ADMIN)
+   UPDATE ORDER STATUS (ADMIN)
    PUT /api/orders/admin/:id/status
 ------------------------------------------------------- */
 exports.adminUpdateStatus = async (req, res) => {
@@ -103,30 +103,27 @@ exports.adminUpdateStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    // Validate order ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.warn(`Invalid order ID: ${id}`);
       return res.status(400).json({ message: 'Invalid order ID' });
     }
 
     if (!status) {
-      console.warn('No status provided in request body');
       return res.status(400).json({ message: 'Status is required' });
     }
 
-    // Update the order
+    // Update SHIPPING/ORDER STATUS — NOT paymentStatus
     const order = await Order.findByIdAndUpdate(
       id,
-      { paymentStatus: status, updatedAt: Date.now() },
+      { status, updatedAt: Date.now() },
       { new: true }
-    ).populate('userId', 'firstName lastName email').populate('items.productId');
+    )
+      .populate('userId', 'firstName lastName email')
+      .populate('items.productId');
 
     if (!order) {
-      console.warn(`Order not found: ${id}`);
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    console.log(`Order ${id} updated to status: ${status}`);
     res.json({ message: 'Order status updated successfully', order });
   } catch (err) {
     console.error('Admin update order status error:', err);
