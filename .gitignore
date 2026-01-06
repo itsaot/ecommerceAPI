@@ -101,3 +101,4 @@ createMetaAdmin.js
 testEmail.js
 verifySMTP.js
 testPort.js
+seedCategories.js
